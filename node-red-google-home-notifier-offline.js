@@ -107,16 +107,27 @@ module.exports = function (RED) {
         });
         return;
       }
-      config.googlehomenotifier.setEmitVolume(msg.emitVolume,function(){ // toggle the emit volume
-        config.googlehomenotifier.notify(msg.payload, function (result) {
-          node.status({
-            fill: "green",
-            shape: "ring",
-            text: "Successfully sent voice command"
-          });
-        });
-      })
 
+      // config.googlehomenotifier.setEmitVolume(msg.emitVolume,function(){ // toggle the emit volume
+      //   config.googlehomenotifier.notify(msg.payload, function (result) {
+      //     node.status({
+      //       fill: "green",
+      //       shape: "ring",
+      //       text: "Successfully sent voice command"
+      //     });
+      //   });
+      // })
+      config.googlehomenotifier
+        .setEmitVolume(msg.emitVolume)
+        .setFileServerPort(msg.fileServerPort===undefined?"":msg.fileServerPort)
+        .setCacheFolder(msg.cacheFolder===undefined?"":msg.cacheFolder)
+        .notify(msg.payload, function (result) {
+              node.status({
+                fill: "green",
+                shape: "ring",
+                text: "Successfully sent voice command"
+                });
+          });
     });
 
     config.googlehomenotifier.on('error', function (error) {
