@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "bonjour": "^3.5.0",
-    "google-home-notifier-offline": "file:D:/DefaultInstall/UserData/nodejs/github/google-home-notifier-offline"
+    "google-home-notifier-offline": "latest"
   },
   "repository": {
     "type": "git",
