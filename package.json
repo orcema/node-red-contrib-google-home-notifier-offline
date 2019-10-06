@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-google-home-notifier-offline",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "node-red-google-home-notifier-offline.js",
   "author": "Orce MARINKOVSKI",
   "node-red": {
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "bonjour": "^3.5.0",
-    "google-home-notifier-offline": "file:D:/DefaultInstall/UserData/nodejs/github/google-home-notifier-offline"
+    "google-home-notifier-offline": "latest"
   },
   "repository": {
     "type": "git",
