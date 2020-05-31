@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "bonjour": "^3.5.0",
-    "google-home-notifier-offline": "latest"
+    "google-home-notifier-offline": "file:C:/userData/node/node-red-custom-modules/google-home-notifier-offline"
   },
   "repository": {
     "type": "git",
