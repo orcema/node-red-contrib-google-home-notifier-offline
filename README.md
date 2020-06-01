@@ -1,5 +1,9 @@
 # node-red-contrib-google-home-notifier-offline
 
+**version 0.1.1:**
+The reading speed can now be set with the message variable 'speed'. eg. "msg.speed".
+Value must be between 0.01 (slowest) and 1 (normal speed).
+
 **version 0.1.0:**
 Documentation updated
 
