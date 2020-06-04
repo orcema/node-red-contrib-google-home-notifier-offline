@@ -1,6 +1,6 @@
 # node-red-contrib-google-home-notifier-offline
 
-**version 1.1.4:**
+**version 0.1.5:**
 fix: url to play from localserver on linux host
 
 **version 0.1.3:**
