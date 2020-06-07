@@ -118,6 +118,7 @@ module.exports = function (RED) {
       //   });
       // })
       config.googlehomenotifier
+        .setSpeechSpeed(msg.speed||1)
         .setEmitVolume(msg.emitVolume)
         .setFileServerPort(msg.fileServerPort===undefined?"":msg.fileServerPort)
         .setCacheFolder(msg.cacheFolder===undefined?"":msg.cacheFolder)
