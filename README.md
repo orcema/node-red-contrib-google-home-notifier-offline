@@ -1,5 +1,9 @@
 # node-red-contrib-google-home-notifier-offline
 
+**version 1.1.0:**
+fix: google tts doesn't support speed anymore. Have to choose value 1 for normal speed or less than 1 for slow.
+!Important: a cache folder has to be setup.
+
 **version 0.1.5:**
 fix: url to play from localserver on linux host
 
