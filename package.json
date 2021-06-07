@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "bonjour": "^3.5.0",
+    "file-server": "2.1.0",
     "google-home-notifier-offline": "^1.1.0"
   },
   "repository": {

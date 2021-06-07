@@ -1,10 +1,29 @@
 'use strict';
 
+// id:'5c358089.a0f02'
+// ipaddress:'192.168.10.217'
+// language:'fr'
+// name:'GoogleHome'
+// notificationLevel:'20'
+// type:'googlehome-config-node-offline'
+var httpServer = "";
+
+var ip = require("ip");
+var serverIP = ip.address();
+var serverPort = "8081"; // default port for serving mp3
+const cacheFolder ="/tmp"
+var listOfDevices = [];
+
+
 module.exports = function (RED) {
+
   // Configuration node
   function GoogleHomeConfig(n) {
+    localFileServerRestart();
+
     RED.nodes.createNode(this, n);
 
+    persistUserDeviceConfigs(n);
     this.ipaddress = n.ipaddress;
     this.language = n.language;
     this.name = n.name;
@@ -28,7 +47,7 @@ module.exports = function (RED) {
     });
 
     //Known issue: when 'language' is Default/Auto, this will fail & return undefined
-    this.googlehomenotifier = require('google-home-notifier-offline')(this.ipaddress, this.language, 1);
+    this.googlehomenotifier = require('google-home-notifier-offline')(this.ipaddress, this.language, 1,serverIP,serverPort,cacheFolder);
 
     //Build another API to auto detect IP Addresses
     discoverIpAddresses('googlecast', function (ipaddresses) {
@@ -37,30 +56,6 @@ module.exports = function (RED) {
       });
     });
   };
-
-  function discoverIpAddresses(serviceType, discoveryCallback) {
-    var ipaddresses = [];
-    var bonjour = require('bonjour')();
-    var browser = bonjour.find({
-      type: serviceType
-    }, function (service) {
-      service.addresses.forEach(function (element) {
-        if (element.split(".").length == 4) {
-          var label = "" + service.txt.md + " (" + element + ")";
-          ipaddresses.push({
-            label: label,
-            value: element
-          });
-        }
-      });
-
-      //Add a bit of delay for all services to be discovered
-      if (discoveryCallback)
-        setTimeout(function () {
-          discoveryCallback(ipaddresses);
-        }, 2000);
-    });
-  }
 
   RED.nodes.registerType("googlehome-config-node-offline", GoogleHomeConfig);
 
@@ -120,8 +115,8 @@ module.exports = function (RED) {
       config.googlehomenotifier
         .setSpeechSpeed(msg.speed||1)
         .setEmitVolume(msg.emitVolume)
-        .setFileServerPort(msg.fileServerPort===undefined?"":msg.fileServerPort)
-        .setCacheFolder(msg.cacheFolder===undefined?"":msg.cacheFolder)
+        // .setFileServerPort(msg.fileServerPort===undefined?"":msg.fileServerPort)
+        // .setCacheFolder(msg.cacheFolder===undefined?"":msg.cacheFolder)
         .notify(msg.payload, function (result) {
               node.status({
                 fill: "green",
@@ -159,4 +154,81 @@ module.exports = function (RED) {
 
   RED.nodes.registerType("googlehome-notifier-offline", GoogleHomeNotifier);
 
+
 };
+function persistUserDeviceConfigs(n) {
+  const updatedDevice = listOfDevices.find(device => device.id === n.id);
+  if (updatedDevice) {
+    listOfDevices.forEach(device => {
+      if (device.id === n.id) {
+        device = n;
+      }
+    });
+  } else {
+    listOfDevices.push(n);
+  }
+}
+function discoverIpAddresses(serviceType, discoveryCallback) {
+  var ipaddresses = [];
+  var bonjour = require('bonjour')();
+  var browser = bonjour.find({
+    type: serviceType
+  }, function (service) {
+    service.addresses.forEach(function (element) {
+      if (element.split(".").length == 4) {
+        var label = "" + service.txt.md + " (" + element + ")";
+        ipaddresses.push({
+          label: label,
+          value: element
+        });
+      }
+    });
+
+    //Add a bit of delay for all services to be discovered
+    if (discoveryCallback)
+      setTimeout(function () {
+        discoveryCallback(ipaddresses);
+      }, 2000);
+  });
+}
+
+function localFileServerClose(callback) {
+  if (httpServer !== "") {
+    httpServer.close(function () {
+      httpServer = "";
+    });
+  }
+  callback();
+}
+
+function localFileServerStart() {
+
+  const FileServer = require('file-server');
+
+  const fileServer = new FileServer((error, request, response) => {
+    response.statusCode = error.code || 500;
+    response.end("404: Not Found " + request.url);
+  });
+
+  const serveRobots = fileServer.serveDirectory(cacheFolder, {
+    '.mp3': 'audio/mpeg'
+  });
+
+  httpServer = require('http')
+    .createServer(serveRobots)
+    .listen(serverPort);
+  console.log("fileServer listening on ip " + serverIP + " and port " + serverPort);
+
+}
+
+function localFileServerRestart() {
+  if (httpServer === "") {
+    localFileServerStart();
+  } else {
+    localFileServerClose(function () {
+      localFileServerStart();
+    })
+  }
+}
+
+
