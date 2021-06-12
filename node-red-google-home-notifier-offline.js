@@ -6,7 +6,7 @@
 // name:'GoogleHome'
 // notificationLevel:'20'
 // type:'googlehome-config-node-offline'
-var httpServer = "";
+var mediaServers = [];
 
 var ip = require("ip");
 var serverIP = ip.address();
@@ -44,19 +44,22 @@ module.exports = function (RED) {
     });
 
     //Known issue: when 'language' is Default/Auto, this will fail & return undefined
-    serverPort = (nodeServer.mediaListenPort ? nodeServer.mediaListenPort : 8089);
-    cacheFolder = (nodeServer.cacheFolder?nodeServer.cacheFolder:cacheFolder);
+    this.mediaServerPortInUse = (nodeServer.mediaServerPort ? nodeServer.mediaServerPort : 8089);
+    this.cacheFolderInUse = (nodeServer.cacheFolder?nodeServer.cacheFolder:cacheFolder);
+
+    mediaServerStart(this);
+
     this.googlehomenotifier = require('google-home-notifier-offline')(
       nodeServer.ipaddress,
       nodeServer.language,
       1,
       serverIP,
-      serverPort,
-      cacheFolder,
+      this.mediaServerPortInUse,
+      this.cacheFolderInUse,
       (nodeServer.notificationLevel ? nodeServer.notificationLevel / 100 : 0.2)
     );
 
-    this.setMaxListeners(Infinity);
+    this.googlehomenotifier.setMaxListeners(Infinity);
 
 
     //Build another API to auto detect IP Addresses
@@ -162,8 +165,6 @@ module.exports = function (RED) {
 
   RED.nodes.registerType("googlehome-notifier-offline", GoogleHomeNotifier);
 
-  mediaServerStart();
-
   /* #region  global helpers */
   function discoverIpAddresses(serviceType, discoveryCallback) {
     var ipaddresses = [];
@@ -190,16 +191,19 @@ module.exports = function (RED) {
   }
 
   function mediaServerClose(callback) {
-    if (httpServer !== "") {
-      httpServer.close(function () {
-        httpServer = "";
+    if (mediaServers !== "") {
+      mediaServers.close(function () {
+        mediaServers = "";
       });
     }
     callback();
   }
 
-  function mediaServerStart() {
+  function mediaServerStart(nodeInstance) {
 
+    if (mediaServers.find(servers => servers.serverListeningPort == nodeInstance.mediaServerPortInUse)){
+      return;
+    }
     const FileServer = require('file-server');
 
     const fileServer = new FileServer((error, request, response) => {
@@ -207,26 +211,31 @@ module.exports = function (RED) {
       response.end("404: Not Found " + request.url);
     });
 
-    const serveRobots = fileServer.serveDirectory(cacheFolder, {
+    const serveRobots = fileServer.serveDirectory(nodeInstance.cacheFolderInUse, {
       '.mp3': 'audio/mpeg'
     });
 
-    httpServer = require('http')
+    const httpServer = require('http')
       .createServer(serveRobots)
-      .listen(serverPort);
-    console.log("fileServer listening on ip " + serverIP + " and port " + serverPort);
+      .listen(nodeInstance.mediaServerPortInUse);
+    console.log("fileServer listening on ip " + serverIP + " and port " + nodeInstance.mediaServerPortInUse);
 
+    mediaServers.push({
+      'serverInstance':httpServer,
+      'serverListeningPort':nodeInstance.mediaServerPortInUse
+    });
+    
   }
 
-  function mediaServerRestart() {
-    if (httpServer === "") {
-      mediaServerStart();
-    } else {
-      mediaServerClose(function () {
-        mediaServerStart();
-      })
-    }
-  }
+  // function mediaServerRestart() {
+  //   if (httpServer === "") {
+  //     mediaServerStart();
+  //   } else {
+  //     mediaServerClose(function () {
+  //       mediaServerStart();
+  //     })
+  //   }
+  // }
   /* #endregion */
 
   
