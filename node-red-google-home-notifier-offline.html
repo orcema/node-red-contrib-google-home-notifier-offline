@@ -17,6 +17,9 @@
       },
       mediaListenPort: {
         value: ""
+      },
+      cacheFolder: {
+        value: "/tmp"
       }
     },
     label: function () {
@@ -88,9 +91,17 @@
     <input type="text" id="node-config-input-notificationLevel" style="width:10%;" placeholder="20"/>
   </div>
   <div class="form-row">
-    <label for="node-config-input-mediaListenPort" style="width:40%;"><i class="fa fa-server" ></i> Media server listening port</label>
-    <input type="text" id="node-config-input-mediaListenPort" style="width:75px;" placeholder="8098"/>
-</div> 
+    <label style="width:40%;"><i class="fa fa-server" ></i> Media server</label>
+    <li>
+      <label for="node-config-input-mediaListenPort" >listening port</label>
+      <input type="text" id="node-config-input-mediaListenPort" style="width:75px;" placeholder="8098"/>
+    </li>
+    <li>
+      <label for="node-config-input-cacheFolder" > cache folder</label>
+      <input type="text" id="node-config-input-cacheFolder" style="width:75px;" placeholder="/tmp"/>
+    </li>
+  </div>
+
 </script>
 
 

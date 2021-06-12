@@ -11,19 +11,19 @@ var httpServer = "";
 var ip = require("ip");
 var serverIP = ip.address();
 var serverPort = "8089"; // default port for serving mp3
-const cacheFolder ="/tmp"
+var cacheFolder = "/tmp"
 var listOfDevices = [];
 
 
 module.exports = function (RED) {
 
   // Configuration node
-  function GoogleHomeConfig(n) {
+  function GoogleHomeConfig(nodeServer) {
     // localFileServerRestart();
 
-    RED.nodes.createNode(this, n);
+    RED.nodes.createNode(this, nodeServer);
 
-    persistUserDeviceConfigs(n);
+    // persistUserDeviceConfigs(nodeConfig);
 
     //Prepare language Select Box
     var obj = require('./languages');
@@ -44,16 +44,20 @@ module.exports = function (RED) {
     });
 
     //Known issue: when 'language' is Default/Auto, this will fail & return undefined
-    serverPort=(n.mediaListenPort?n.mediaListenPort:8089);
+    serverPort = (nodeServer.mediaListenPort ? nodeServer.mediaListenPort : 8089);
+    cacheFolder = (nodeServer.cacheFolder?nodeServer.cacheFolder:cacheFolder);
     this.googlehomenotifier = require('google-home-notifier-offline')(
-      n.ipaddress, 
-      n.language, 
+      nodeServer.ipaddress,
+      nodeServer.language,
       1,
       serverIP,
       serverPort,
       cacheFolder,
-      (n.notificationLevel?n.notificationLevel/100:0.2)
-      );
+      (nodeServer.notificationLevel ? nodeServer.notificationLevel / 100 : 0.2)
+    );
+
+    this.setMaxListeners(Infinity);
+
 
     //Build another API to auto detect IP Addresses
     discoverIpAddresses('googlecast', function (ipaddresses) {
@@ -67,27 +71,20 @@ module.exports = function (RED) {
 
   //--------------------------------------------------------
 
-  function GoogleHomeNotifier(n) {
-    RED.nodes.createNode(this, n);
-    var node = this;
+  function GoogleHomeNotifier(nodeInFlow) {
+    RED.nodes.createNode(this, nodeInFlow);
+    const nodeInstance = this;
+    const nodeServerInstance = RED.nodes.getNode(nodeInFlow.server);
 
-    //Validate config node
-    var config = RED.nodes.getNode(n.server);
-    this.configname = config.name;
-    if (config === null || config === undefined) {
-      node.status({
-        fill: "red",
-        shape: "ring",
-        text: "please create & select a config node"
-      });
+    if (nodeServerInstance === null || nodeServerInstance === undefined) {
+      node_status_error("please assign node to a cast device")
       return;
     }
 
-    //On Input
-    node.on('input', function (msg) {
+    nodeInstance.on('input', function (msg) {
       //Validate config node
-      if (config === null || config === undefined) {
-        node.status({
+      if (nodeServerInstance === null || nodeServerInstance === undefined) {
+        nodeInstance.status({
           fill: "red",
           shape: "ring",
           text: "please create & select a config node"
@@ -95,112 +92,79 @@ module.exports = function (RED) {
         return;
       }
 
-      //play music if it is a mp3 url
-      var expression = /^https?:\/\/[-a-zA-Z0-9@:%._\+~#=]{2,256}\/([-a-zA-Z0-9@:%_\+.~#?&//=]*).mp3$/;
-      var regex = new RegExp(expression);
-      if(msg.payload.toLowerCase().match(regex)){
-        config.googlehomenotifier.play(msg.payload, function (result) {
-          node.status({
-            fill: "green",
-            shape: "ring",
-            text: "Successfully played mp3"
-          });
-        });
+      //Workaround for a known issue
+      if (nodeServerInstance.googlehomenotifier === null || nodeServerInstance.googlehomenotifier === undefined) {
+        node_status_error("please select a non-Default language")
         return;
       }
 
-      // config.googlehomenotifier.setEmitVolume(msg.emitVolume,function(){ // toggle the emit volume
-      //   config.googlehomenotifier.notify(msg.payload, function (result) {
-      //     node.status({
-      //       fill: "green",
-      //       shape: "ring",
-      //       text: "Successfully sent voice command"
-      //     });
-      //   });
-      // })
-      
-      if (msg.emitVolume){
-        config.googlehomenotifier.setEmitVolume(msg.emitVolume);
-      }
-      if (msg.speed){
-        config.googlehomenotifier.setSpeechSpeed(msg.speed);
-      }
+      applySettingsFromMessage(msg);
 
-      node.status({
-        fill: "blue",
-        shape: "dot",
-        text: "preparing voice message"
-      });
+      node_status("preparing voice message")
 
-      config.googlehomenotifier
-        // .setFileServerPort(msg.fileServerPort===undefined?"":msg.fileServerPort)
-        // .setCacheFolder(msg.cacheFolder===undefined?"":msg.cacheFolder)
+      nodeServerInstance.googlehomenotifier
         .notify(msg.payload)
         .then(_ =>
-          node_status_ready()
-          )
-          .catch(e => 
-            node.status(node.status({
-              fill:"red",
-              shape:"ring",
-              text:e
-            })));
+          node_status_ready())
+        .catch(e =>
+          node_status_error(e));
     });
 
-    config.googlehomenotifier.on('status', function (message) {
-      node.status({
-        fill: "blue",
-        shape: "dot",
-        text: message
-      });
-    }),
-
-    config.googlehomenotifier.on('error', function (message) {
-      node.status({
-        fill: "red",
-        shape: "ring",
-        text: message
-      });
+    nodeServerInstance.googlehomenotifier.on('status', function (message) {
+      node_status(message);
     });
 
-    //Workaround for a known issue
-    if (config.googlehomenotifier === null || config.googlehomenotifier === undefined) {
-      node.status({
-        fill: "red",
-        shape: "ring",
-        text: "please select a non-Default language"
-      });
-      return;
-    }
+    nodeServerInstance.googlehomenotifier.on('error', function (message) {
+      node_status_error(message);
+    });
 
     node_status_ready();
 
-    config.googlehomenotifier.setMaxListeners(Infinity);
+    /* #region  helpers */
+    function applySettingsFromMessage(msg) {
+      if (msg.emitVolume) {
+        nodeServerInstance.googlehomenotifier.setEmitVolume(msg.emitVolume);
+      }
+      if (msg.speed) {
+        nodeServerInstance.googlehomenotifier.setSpeechSpeed(msg.speed);
+      }
+    }
+    /* #endregion */
+
+    //#region node notifications
+    function node_status(message) {
+      nodeInstance.status({
+        fill: "blue",
+        shape: "dot",
+        text: message
+      });
+    }
 
     function node_status_ready() {
-      node.status({
+      nodeInstance.status({
         fill: "green",
         shape: "dot",
         text: "ready"
       });
     }
+
+    function node_status_error(message) {
+      nodeInstance.status({
+        fill: "red",
+        shape: "ring",
+        text: message
+      });
+    }
+    //#endregion
+
+
   };
 
   RED.nodes.registerType("googlehome-notifier-offline", GoogleHomeNotifier);
 
+  mediaServerStart();
 
-  function persistUserDeviceConfigs(n) {
-    const updatedDevice = listOfDevices.find(device => device.id === n.id);
-    if (updatedDevice) {
-      listOfDevices.forEach(device => {
-        if (device.id === n.id) {
-          device = n;
-        }
-      });
-    } else {
-      listOfDevices.push(n);
-    }
-  }
+  /* #region  global helpers */
   function discoverIpAddresses(serviceType, discoveryCallback) {
     var ipaddresses = [];
     var bonjour = require('bonjour')();
@@ -216,7 +180,7 @@ module.exports = function (RED) {
           });
         }
       });
-  
+
       //Add a bit of delay for all services to be discovered
       if (discoveryCallback)
         setTimeout(function () {
@@ -224,8 +188,8 @@ module.exports = function (RED) {
         }, 2000);
     });
   }
-  
-  function localFileServerClose(callback) {
+
+  function mediaServerClose(callback) {
     if (httpServer !== "") {
       httpServer.close(function () {
         httpServer = "";
@@ -233,37 +197,39 @@ module.exports = function (RED) {
     }
     callback();
   }
-  
-  function localFileServerStart() {
-  
+
+  function mediaServerStart() {
+
     const FileServer = require('file-server');
-  
+
     const fileServer = new FileServer((error, request, response) => {
       response.statusCode = error.code || 500;
       response.end("404: Not Found " + request.url);
     });
-  
+
     const serveRobots = fileServer.serveDirectory(cacheFolder, {
       '.mp3': 'audio/mpeg'
     });
-  
+
     httpServer = require('http')
       .createServer(serveRobots)
       .listen(serverPort);
     console.log("fileServer listening on ip " + serverIP + " and port " + serverPort);
-  
+
   }
-  
-  function localFileServerRestart() {
+
+  function mediaServerRestart() {
     if (httpServer === "") {
-      localFileServerStart();
+      mediaServerStart();
     } else {
-      localFileServerClose(function () {
-        localFileServerStart();
+      mediaServerClose(function () {
+        mediaServerStart();
       })
     }
   }
-  localFileServerStart();
+  /* #endregion */
+
+  
 
 };
 
