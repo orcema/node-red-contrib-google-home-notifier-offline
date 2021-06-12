@@ -13,7 +13,10 @@
         value: "en"
       },
       notificationLevel: {
-        value: 50
+        value: ""
+      },
+      mediaListenPort: {
+        value: ""
       }
     },
     label: function () {
@@ -22,7 +25,6 @@
     oneditprepare: function () {
       var node = this;
       var options = $("#node-input-language");
-
       //Calling the API built by NodeJS code
       $.getJSON('/languages', function (languages) {
         $.each(languages, function (l, language) {
@@ -58,8 +60,9 @@
 
     },
     oneditsave: function () {
-      var node = this;
-      node.language = $("#node-input-language").val();
+      // this.language = $("#node-input-language").val();
+      // this.notificationLevel = $("#node-config-input-notificationLevel").val();
+      // this.mediaListenPort = $("#node-config-input-mediaListenPort").val();
     }
   });
 </script>
@@ -72,7 +75,7 @@
   </div>
   <div class="form-row">
     <label for="node-config-input-name"><i class="icon-tag"></i> Name</label>
-    <input type="text" id="node-config-input-name" style="width:60%;" placeholder="Google Home Mini"/>
+    <input type="text" id="node-config-input-name" style="width:60%;" placeholder="cast device name"/>
   </div>
   <div class="form-row">
     <label for="node-input-language"><i class="fa fa-globe"></i>  Language</label>
@@ -81,43 +84,17 @@
       </select>
   </div>
   <div class="form-row">
-    <label for="node-input-language" style="width:40%;"><i class="fa fa-volume-up" ></i> Default notification level (%)</label>
-    <input type="text" id="node-config-input-notificationLevel" style="width:10%;" placeholder="50"/>
-    <label for="node-config-input-name" ><i class="icon-tag"></i> Overridable</label>
-    <input type="checkbox" checked data-toggle="toggle" class="red-ui-tab-link-button">
+    <label for="node-config-input-notificationLevel" style="width:40%;"><i class="fa fa-volume-up" ></i> Default notification level (%)</label>
+    <input type="text" id="node-config-input-notificationLevel" style="width:10%;" placeholder="20"/>
   </div>
   <div class="form-row">
-    <label for="node-input-language"><i class="fa fa-volume-up"></i> <span data-i18n="node-red:tcpin.label.type">Default notification level (%)</span></label>
-    <select id="node-input-language" style="width:120px; margin-right:5px;">
-        <option value="server" data-i18n="node-red:tcpin.type.listen">Listen on</option>
-        <option value="client" data-i18n="node-red:tcpin.type.connect">Connect to</option>
-    </select>
-    <span data-i18n="node-red:tcpin.label.port">port</span> <input type="text" id="node-input-port" style="width:65px" autocomplete="disable" dir="" class="input-error">
+    <label for="node-config-input-mediaListenPort" style="width:40%;"><i class="fa fa-server" ></i> Media server listening port</label>
+    <input type="text" id="node-config-input-mediaListenPort" style="width:75px;" placeholder="8098"/>
 </div> 
 </script>
 
 
 <!-- ###############################################################################################################-->
-
-<script type="text/x-red" data-template-name="googlehome-notifier-offline">
-  <div class="form-row">
-    <label for="node-input-server"><i class="fa fa-globe"></i> IP Adress</label>
-    <input type="text" id="node-input-server">
-  </div>
-  <div class="form-row">
-    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-    <input type="text" id="node-input-name" placeholder="Google Home Notifier Offline" style="width: 70%;">
-  </div>
-  <div class="form-row" style="width: 400px">
-    <br><li> announcement volume can be set with <b>msg.emitVolume</b> value has to be in range between 0-100</li>
-    <br><li> cache to local directory the mp3 of the announcement using <b>msg.cacheFolder</b>. This way next announcement for the same text will be played from the local cache</li>
-    <br><li> the server port for the cache server can be changed using <b>msg.fileServerPort</b>. The default server port is set to 8081. Change it only in case of port conflict</li>
-    
-    <br><p>Here below is a sample you can import using the "import from clipboard" for the above mentionned options :</p>
-    <p> [{"id":"57e4bdb9.ad4a44","type":"change","z":"c348d271.07631","name":"","rules":[{"t":"set","p":"emitVolume","pt":"msg","to":"10","tot":"str"},{"t":"set","p":"cacheFolder","pt":"msg","to":"D:\\tmp\\GHCache","tot":"str"},{"t":"set","p":"fileServerPort","pt":"msg","to":"8098","tot":"str"}],"action":"","property":"","from":"","to":"","reg":false,"x":540,"y":320,"wires":[["eac3f07f.4fb99"]]}]
-    </p>
-  </div>  
-</script>
 
 <script type="text/javascript">
   RED.nodes.registerType('googlehome-notifier-offline', {
@@ -139,3 +116,24 @@
     }
   });
 </script>
+
+<script type="text/x-red" data-template-name="googlehome-notifier-offline">
+  <div class="form-row">
+    <label for="node-input-server"><i class="fa fa-globe"></i> IP Adress</label>
+    <input type="text" id="node-input-server">
+  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Google Home Notifier Offline" style="width: 70%;">
+  </div>
+  <div class="form-row" style="width: 400px">
+    <br><li> announcement volume can be set with <b>msg.emitVolume</b> value has to be in range between 0-100</li>
+    <br><li> cache to local directory the mp3 of the announcement using <b>msg.cacheFolder</b>. This way next announcement for the same text will be played from the local cache</li>
+    <br><li> the server port for the cache server can be changed using <b>msg.fileServerPort</b>. The default server port is set to 8081. Change it only in case of port conflict</li>
+    
+    <br><p>Here below is a sample you can import using the "import from clipboard" for the above mentionned options :</p>
+    <p> [{"id":"57e4bdb9.ad4a44","type":"change","z":"c348d271.07631","name":"","rules":[{"t":"set","p":"emitVolume","pt":"msg","to":"10","tot":"str"},{"t":"set","p":"cacheFolder","pt":"msg","to":"D:\\tmp\\GHCache","tot":"str"},{"t":"set","p":"fileServerPort","pt":"msg","to":"8098","tot":"str"}],"action":"","property":"","from":"","to":"","reg":false,"x":540,"y":320,"wires":[["eac3f07f.4fb99"]]}]
+    </p>
+  </div>  
+</script>
+
