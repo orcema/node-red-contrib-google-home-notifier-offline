@@ -1,30 +1,17 @@
 'use strict';
-
-// id:'5c358089.a0f02'
-// ipaddress:'192.168.10.217'
-// language:'fr'
-// name:'GoogleHome'
-// notificationLevel:'20'
-// type:'googlehome-config-node-offline'
 var mediaServers = [];
-
-var ip = require("ip");
-var serverIP = ip.address();
-var serverPort = "8089"; // default port for serving mp3
-var cacheFolder = "/tmp"
-var listOfDevices = [];
+const serverIP = require("ip").address();
+const defaultServerPort = "8089";
+const defaultCacheFolder = "/tmp"
 
 
 module.exports = function (RED) {
 
   // Configuration node
   function GoogleHomeConfig(nodeServer) {
-    // localFileServerRestart();
+
 
     RED.nodes.createNode(this, nodeServer);
-
-    // persistUserDeviceConfigs(nodeConfig);
-
     //Prepare language Select Box
     var obj = require('./languages');
     //map to Array:
@@ -44,8 +31,8 @@ module.exports = function (RED) {
     });
 
     //Known issue: when 'language' is Default/Auto, this will fail & return undefined
-    this.mediaServerPortInUse = (nodeServer.mediaServerPort ? nodeServer.mediaServerPort : 8089);
-    this.cacheFolderInUse = (nodeServer.cacheFolder?nodeServer.cacheFolder:cacheFolder);
+    this.mediaServerPortInUse = (nodeServer.mediaServerPort ? nodeServer.mediaServerPort : defaultServerPort);
+    this.cacheFolderInUse = (nodeServer.cacheFolder ? nodeServer.cacheFolder : defaultCacheFolder);
 
     mediaServerStart(this);
 
@@ -104,6 +91,8 @@ module.exports = function (RED) {
       applySettingsFromMessage(msg);
 
       node_status("preparing voice message")
+      
+      console.log("new message -----");
 
       nodeServerInstance.googlehomenotifier
         .notify(msg.payload)
@@ -165,6 +154,7 @@ module.exports = function (RED) {
 
   RED.nodes.registerType("googlehome-notifier-offline", GoogleHomeNotifier);
 
+
   /* #region  global helpers */
   function discoverIpAddresses(serviceType, discoveryCallback) {
     var ipaddresses = [];
@@ -190,57 +180,55 @@ module.exports = function (RED) {
     });
   }
 
-  function mediaServerClose(callback) {
-    if (mediaServers !== "") {
-      mediaServers.close(function () {
-        mediaServers = "";
+  function mediaServerStart(nodeInstance) {
+    const matchedMediaServer = mediaServers.find(servers =>
+      servers.mediaServerPortInUse == nodeInstance.mediaServerPortInUse);
+    if (matchedMediaServer) {
+      console.log('destroying media server:',matchedMediaServer.serverInstance)
+      matchedMediaServer.serverInstance.close(_=>{
+        mediaServers = mediaServers.filter(servers => servers.mediaServerPortInUse != nodeInstance.mediaServerPortInUse);
+        setTimeout(()=>{
+          mediaServerStart(nodeInstance);
+        },1)
+        
       });
+      return;
+      
     }
-    callback();
+    startMediaServerInstance(nodeInstance);
+  
+   
+
   }
 
-  function mediaServerStart(nodeInstance) {
-
-    if (mediaServers.find(servers => servers.serverListeningPort == nodeInstance.mediaServerPortInUse)){
-      return;
-    }
+  function startMediaServerInstance(nodeInstance) {
     const FileServer = require('file-server');
-
+  
     const fileServer = new FileServer((error, request, response) => {
       response.statusCode = error.code || 500;
       response.end("404: Not Found " + request.url);
     });
-
+  
     const serveRobots = fileServer.serveDirectory(nodeInstance.cacheFolderInUse, {
       '.mp3': 'audio/mpeg'
     });
-
+  
     const httpServer = require('http')
       .createServer(serveRobots)
       .listen(nodeInstance.mediaServerPortInUse);
     console.log("fileServer listening on ip " + serverIP + " and port " + nodeInstance.mediaServerPortInUse);
-
+  
     mediaServers.push({
-      'serverInstance':httpServer,
-      'serverListeningPort':nodeInstance.mediaServerPortInUse
+      'serverInstance': httpServer,
+      'mediaServerPortInUse': nodeInstance.mediaServerPortInUse
     });
-    
   }
 
-  // function mediaServerRestart() {
-  //   if (httpServer === "") {
-  //     mediaServerStart();
-  //   } else {
-  //     mediaServerClose(function () {
-  //       mediaServerStart();
-  //     })
-  //   }
-  // }
   /* #endregion */
 
-  
-
 };
+
+
 
 
 
