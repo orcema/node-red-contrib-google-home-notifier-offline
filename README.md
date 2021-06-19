@@ -1,4 +1,9 @@
-# node-red-contrib-google-home-notifier-offline
+## node-red-contrib-google-home-notifier-offline
+
+
+# replaced by [node-red-google-notify](https://flows.nodered.org/node/node-red-google-notify).
+
+
 
 **version 1.1.0:**
 fix: google tts doesn't support speed anymore. Have to choose value 1 for normal speed or less than 1 for slow.
